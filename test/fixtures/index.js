@@ -1,16 +1,18 @@
 import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, join } from 'path';
 import { expect } from 'chai';
 import Sequelize from 'sequelize';
 import typescript from 'typescript';
 import coffeescript from 'coffee-script';
 import helper from '../helper';
 import Umzug from '../../src';
+import uuid from 'uuid/v4';
+import Migration from '../../src/migration';
 
 describe('custom resolver', () => {
   beforeEach(function () {
     helper.clearTmp();
-    this.storagePath = resolve(__dirname, '../tmp/storage.sqlite');
+    this.storagePath = join(__dirname, `/../tmp/storage-${uuid()}.sqlite`);
     this.sequelize = new Sequelize('database', 'username', 'password', {
       dialect: 'sqlite',
       storage: this.storagePath,
@@ -52,6 +54,36 @@ describe('custom resolver', () => {
     this.customResolver = undefined;
 
     await this.umzug().up();
+
+    await this.verifyTables();
+  });
+
+  it('an array of migrations created manually can be passed in', async function () {
+    const umzug = new Umzug({
+      migrations: [
+        new Migration(require.resolve('./javascript/1.users'), {
+          upName: 'up',
+          downName: 'down',
+          migrations: {
+            wrap: fn => () => fn(this.sequelize.getQueryInterface(), this.sequelize.constructor),
+          },
+        }),
+        new Migration(require.resolve('./javascript/2.things'), {
+          upName: 'up',
+          downName: 'down',
+          migrations: {
+            wrap: fn => () => fn(this.sequelize.getQueryInterface(), this.sequelize.constructor),
+          },
+        }),
+      ],
+      storage: 'sequelize',
+      storageOptions: {
+        path: this.storagePath,
+        sequelize: this.sequelize,
+      },
+    });
+
+    await umzug.up();
 
     await this.verifyTables();
   });
