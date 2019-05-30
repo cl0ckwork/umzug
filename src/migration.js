@@ -31,7 +31,7 @@ module.exports = class Migration {
    * Without this defined, a regular javascript import will be performed.
    * @constructs Migration
    */
-  constructor (path, options) {
+  constructor(path, options) {
     this.path = _path.resolve(path);
     this.file = _path.basename(this.path);
     this.options = {
@@ -49,7 +49,7 @@ module.exports = class Migration {
    *
    * @returns {Promise.<Object>} Required migration module
    */
-  migration () {
+  migration() {
     if (typeof this.options.migrations.customResolver === 'function') {
       return this.options.migrations.customResolver(this.path);
     }
@@ -77,7 +77,7 @@ module.exports = class Migration {
    *
    * @returns {Promise}
    */
-  up () {
+  up() {
     return this._exec(this.options.upName, [].slice.apply(arguments));
   }
 
@@ -86,7 +86,7 @@ module.exports = class Migration {
    *
    * @returns {Promise}
    */
-  down () {
+  down() {
     return this._exec(this.options.downName, [].slice.apply(arguments));
   }
 
@@ -95,7 +95,7 @@ module.exports = class Migration {
    * @param {String} needle - The beginning of the file name.
    * @returns {boolean}
    */
-  testFileName (needle) {
+  testFileName(needle) {
     return this.file.indexOf(needle) === 0;
   }
 
@@ -107,14 +107,14 @@ module.exports = class Migration {
    * @returns {Promise}
    * @private
    */
-  async _exec (method, args) {
+  async _exec(method, args) {
     const migration = await this.migration();
     let fun = migration[method];
     if (migration.default) {
       fun = migration.default[method] || migration[method];
     }
     if (!fun) throw new Error('Could not find migration method: ' + method);
-    const wrappedFun = this.options.migrations.wrap(fun);
+    const wrappedFun = this.options.wrap ? this.options.wrap(fun) : fun;
     const result = wrappedFun.apply(migration, args);
     if (!result || typeof result.then !== 'function') {
       throw new Error(`Migration ${this.file} (or wrapper) didn't return a promise`);
